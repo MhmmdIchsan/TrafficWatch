@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Device } from '../types';
 import Map from '../components/Map';
+import dotenv from 'dotenv';
 
+dotenv.config();
 export default function Home() {
     const [devices, setDevices] = useState<Device[]>([]);
 

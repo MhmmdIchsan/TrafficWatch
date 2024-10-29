@@ -11,11 +11,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, BarChart3, Users } from 'lucide-react';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export default function Admin() {
   const [devices, setDevices] = useState<Device[]>([]);
   const fetchDevices = useCallback(async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/locationinfo`);
+      const response = await fetch(`${API_BASE_URL}/locationinfo`);
       const result = await response.json();
   
       if (response.ok) {
@@ -54,7 +56,7 @@ export default function Admin() {
     };
     
 
-    const url = `${process.env.REACT_APP_API_BASE_URL}/devices?deviceid=${deviceId}&start_time=${formatTimestamp(startTime)}&end_time=${formatTimestamp(endTime)}`;
+    const url = `${API_BASE_URL}/devices?deviceid=${deviceId}&start_time=${formatTimestamp(startTime)}&end_time=${formatTimestamp(endTime)}`;
 
     try {
       const response = await fetch(url);

@@ -9,6 +9,8 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { motion } from 'framer-motion';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 interface DataTableProps {
   data: Device[];
   onAddDevice: (newDevice: Device) => void;
@@ -48,7 +50,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
 
   const handleAddDevice = async (newDevice: Device) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/locationinfo`, {
+      const response = await fetch(`${API_BASE_URL}/locationinfo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +82,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
 
   const handleUpdateDevice = async (updatedDevice: Device) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/locationinfo/${updatedDevice.deviceid}`, {
+      const response = await fetch(`${API_BASE_URL}/locationinfo/${updatedDevice.deviceid}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +108,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
   const handleDeleteDevice = async (deviceId: string) => {
     if (window.confirm('Are you sure you want to delete this device?')) {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/locationinfo/${deviceId}`, {
+        const response = await fetch(`${API_BASE_URL}/locationinfo/${deviceId}`, {
           method: 'DELETE',
         });
 
