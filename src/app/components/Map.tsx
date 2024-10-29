@@ -16,6 +16,21 @@ const Map: React.FC<MapProps> = ({ data }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
+  const getStatusColor = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return '#10B981'; // green
+      case 'inactive':
+        return '#EF4444'; // red
+      case 'maintenance':
+        return '#F59E0B'; // yellow
+      case 'offline':
+        return '#6B7280'; // gray
+      default:
+        return '#3B82F6'; // blue (default)
+    }
+  };
+
   useEffect(() => {
     const initializeMap = async () => {
       const loader = new Loader({
@@ -59,14 +74,19 @@ const Map: React.FC<MapProps> = ({ data }) => {
           lng: parseFloat(item.longitude),
         };
 
+        const statusColor = getStatusColor(item.status || 'unknown');
+
         const markerContent = document.createElement('div');
+        markerContent.className = 'marker-container';
         markerContent.innerHTML = `
-          <div style="background-color: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.3); padding: 12px; font-family: Arial, sans-serif;">
-            <h3 style="font-size: 16px; margin: 0 0 8px; color: #333;">${item.location}</h3>
-            <p style="font-size: 14px; margin: 0; color: #666;">
-              <strong>Device ID:</strong> ${item.deviceid}<br>
-              <strong>Status:</strong> ${item.status || 'N/A'}
-            </p>
+          <div class="marker-content animate-pulse" style="border-color: ${statusColor};">
+            <div class="marker-inner">
+              <h3 class="marker-title">${item.location}</h3>
+              <p class="marker-details">
+                <strong>Device ID:</strong> ${item.deviceid}<br>
+                <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'N/A'}</span>
+              </p>
+            </div>
           </div>
         `;
 
@@ -97,6 +117,47 @@ const Map: React.FC<MapProps> = ({ data }) => {
       <div className="absolute bottom-4 left-4 text-white text-2xl font-bold">
         {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       </div>
+      <style jsx global>{`
+        .marker-container {
+          cursor: pointer;
+        }
+        .marker-content {
+          background-color: white;
+          border-radius: 16px;
+          box-shadow: 0 2px 6px rgba(0,0,0,.3);
+          padding: 12px;
+          font-family: Arial, sans-serif;
+          border: 2px solid;
+          transition: all 0.3s ease;
+        }
+        .marker-content:hover {
+          transform: scale(1.05);
+        }
+        .marker-title {
+          font-size: 16px;
+          margin: 0 0 8px;
+          color: #333;
+        }
+        .marker-details {
+          font-size: 14px;
+          margin: 0;
+          color: #666;
+        }
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(var(--status-color), 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(var(--status-color), 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(var(--status-color), 0);
+          }
+        }
+        .animate-pulse {
+          animation: pulse 2s infinite;
+        }
+      `}</style>
     </div>
   );
 };
