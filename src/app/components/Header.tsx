@@ -1,18 +1,57 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 const Header: React.FC = () => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true); // Set isClient hanya saat di klien
+  }, []);
+
   return (
-    <header className="flex justify-between items-center p-4 bg-[#000000] bg-opacity-50 text-white">
-      <div className="flex items-center ">
-        <div className="ms-16 w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-indigo-900 font-bold mr-2">TW</div>
-        <h1 className="text-lg font-bold">TRAFFIC WATCH</h1>
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="sticky top-0 z-50 backdrop-blur-md bg-gradient-to-r from-black/80 to-indigo-950/80 border-b border-gray-700/30"
+    >
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center p-4">
+          <motion.div 
+            className="flex items-center space-x-3 ml-16"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                TW
+              </div>
+              <div className="absolute -inset-0.5 bg-indigo-500 rounded-full blur opacity-30"></div>
+            </div>
+            <Link href="/" className="text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-300 hover:to-indigo-200 transition-colors">
+              TRAFFIC WATCH
+            </Link>
+          </motion.div>
+
+          <div className="flex items-center space-x-6 mr-16">
+            <motion.span 
+              whileHover={{ scale: 1.05 }}
+              className="text-gray-300 hover:text-white cursor-pointer transition-colors"
+            >
+              Sign Up
+            </motion.span>
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <Link 
+                href="/admin" 
+                className="bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-2 rounded-lg font-medium text-white shadow-lg hover:from-indigo-500 hover:to-indigo-400 transition-all duration-300 hover:shadow-indigo-500/25"
+              >
+                SIGN UP
+              </Link>
+            </motion.div>
+          </div>
+        </div>
       </div>
-      <div className="flex items-center me-16">
-        <span className="mr-4">Sign Up</span>
-        <button className="bg-indigo-600 px-4 py-2 rounded-md">SIGN UP</button>
-        <div className="ml-4 w-10 h-6 bg-gray-300 rounded-full"></div>
-      </div>
-    </header>
+    </motion.header>
   );
 };
 
