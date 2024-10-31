@@ -38,7 +38,7 @@ const Header: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               className="text-gray-300 hover:text-white cursor-pointer transition-colors"
             >
-              Sign Up
+              <Link href="/login">Sign Up</Link>
             </motion.span>
             <motion.div whileHover={{ scale: 1.05 }}>
               <Link 
