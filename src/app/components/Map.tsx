@@ -15,6 +15,7 @@ const Map: React.FC<MapProps> = ({ data }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const isInitializedRef = useRef(false);
 
   const getStatusColor = (status: string): string => {
     switch (status.toLowerCase()) {
@@ -31,8 +32,74 @@ const Map: React.FC<MapProps> = ({ data }) => {
     }
   };
 
+  // Function to convert hex to RGB
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+
+  const createMarkers = (map: google.maps.Map) => {
+    if (!data.length) return;
+
+    // Clear existing markers only if they exist
+    if (markersRef.current.length > 0) {
+      markersRef.current.forEach((marker) => marker.map = null);
+      markersRef.current = [];
+    }
+
+    // Add new markers
+    data.forEach(async (item) => {
+      const position = {
+        lat: parseFloat(item.latitude),
+        lng: parseFloat(item.longitude),
+      };
+
+      const statusColor = getStatusColor(item.status || 'unknown');
+      const rgbColor = hexToRgb(statusColor);
+      const rgbString = rgbColor ? `${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}` : '59, 130, 246';
+
+      const markerContent = document.createElement('div');
+      markerContent.className = 'marker-container';
+      markerContent.innerHTML = `
+        <div class="marker-content" style="border-color: ${statusColor}; --status-color: ${rgbString};">
+          <div class="marker-inner">
+            <h3 class="marker-title">${item.location}</h3>
+            <p class="marker-details">
+              <strong>Device ID:</strong> ${item.deviceid}<br>
+              <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'N/A'}</span>
+            </p>
+          </div>
+          <div class="pulse-ring" style="--status-color: ${rgbString};"></div>
+        </div>
+      `;
+
+      const loader = new Loader({
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
+        version: 'beta',
+        libraries: ['marker'],
+      });
+
+      const { AdvancedMarkerElement } = await loader.importLibrary('marker');
+      
+      const marker = new AdvancedMarkerElement({
+        map,
+        position,
+        content: markerContent,
+        title: item.location,
+      });
+
+      markersRef.current.push(marker);
+    });
+  };
+
   useEffect(() => {
     const initializeMap = async () => {
+      if (isInitializedRef.current) return;
+
       const loader = new Loader({
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
         version: 'beta',
@@ -40,7 +107,6 @@ const Map: React.FC<MapProps> = ({ data }) => {
       });
 
       const { Map } = await loader.importLibrary('maps');
-      const { AdvancedMarkerElement } = await loader.importLibrary('marker');
 
       const centerLocation = {
         lat: 5.54928724461252,
@@ -56,56 +122,19 @@ const Map: React.FC<MapProps> = ({ data }) => {
 
       const newMap = new Map(mapRef.current as HTMLDivElement, options);
       setMap(newMap);
+      
+      // Create markers immediately after map initialization
+      createMarkers(newMap);
+      isInitializedRef.current = true;
     };
 
     initializeMap();
-  }, []);
+  }, []); 
 
+  // Update markers when data changes
   useEffect(() => {
     if (map && data.length > 0) {
-      // Clear existing markers
-      markersRef.current.forEach((marker) => marker.map = null);
-      markersRef.current = [];
-
-      // Add new markers
-      data.forEach((item) => {
-        const position = {
-          lat: parseFloat(item.latitude),
-          lng: parseFloat(item.longitude),
-        };
-
-        const statusColor = getStatusColor(item.status || 'unknown');
-
-        const markerContent = document.createElement('div');
-        markerContent.className = 'marker-container';
-        markerContent.innerHTML = `
-          <div class="marker-content animate-pulse" style="border-color: ${statusColor};">
-            <div class="marker-inner">
-              <h3 class="marker-title">${item.location}</h3>
-              <p class="marker-details">
-                <strong>Device ID:</strong> ${item.deviceid}<br>
-                <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'N/A'}</span>
-              </p>
-            </div>
-          </div>
-        `;
-
-        const marker = new google.maps.marker.AdvancedMarkerElement({
-          map,
-          position,
-          content: markerContent,
-          title: item.location,
-        });
-
-        marker.addListener('gmp-click', () => {
-          const infoWindow = new google.maps.InfoWindow({
-            content: markerContent,
-          });
-          infoWindow.open(map, marker);
-        });
-
-        markersRef.current.push(marker);
-      });
+      createMarkers(map);
     }
   }, [map, data]);
 
@@ -120,6 +149,7 @@ const Map: React.FC<MapProps> = ({ data }) => {
       <style jsx global>{`
         .marker-container {
           cursor: pointer;
+          position: relative;
         }
         .marker-content {
           background-color: white;
@@ -129,6 +159,19 @@ const Map: React.FC<MapProps> = ({ data }) => {
           font-family: Arial, sans-serif;
           border: 2px solid;
           transition: all 0.3s ease;
+          position: relative;
+          z-index: 2;
+        }
+        .pulse-ring {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 100%;
+          height: 100%;
+          border-radius: 16px;
+          animation: pulse 2s infinite;
+          z-index: 1;
         }
         .marker-content:hover {
           transform: scale(1.05);
@@ -146,16 +189,16 @@ const Map: React.FC<MapProps> = ({ data }) => {
         @keyframes pulse {
           0% {
             box-shadow: 0 0 0 0 rgba(var(--status-color), 0.7);
+            opacity: 1;
           }
           70% {
-            box-shadow: 0 0 0 10px rgba(var(--status-color), 0);
+            box-shadow: 0 0 0 20px rgba(var(--status-color), 0);
+            opacity: 0.5;
           }
           100% {
             box-shadow: 0 0 0 0 rgba(var(--status-color), 0);
+            opacity: 0;
           }
-        }
-        .animate-pulse {
-          animation: pulse 2s infinite;
         }
       `}</style>
     </div>
