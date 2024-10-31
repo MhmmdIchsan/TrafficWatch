@@ -9,12 +9,13 @@ import { Device } from '../types';
 import { motion } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, BarChart3, Users } from 'lucide-react';
+import { Activity, BarChart3, Users, AlertTriangle, Car, AlertCircle } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function AdminPage() {
   const [devices, setDevices] = useState<Device[]>([]);
+  
   const fetchDevices = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/locationinfo`);
@@ -33,28 +34,26 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    fetchDevices(); // Call the function on mount
-    const interval = setInterval(fetchDevices, 60000); // Refresh every minute
-  
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [fetchDevices]); // Add fetchDevices as a dependency
+    fetchDevices();
+    const interval = setInterval(fetchDevices, 60000);
+    return () => clearInterval(interval);
+  }, [fetchDevices]);
 
   const fetchDeviceDetails = async (deviceId: string): Promise<Device | null> => {
     const endTime = new Date();
-    const startTime = new Date(endTime.getTime() - 60000); // 1 minute ago
+    const startTime = new Date(endTime.getTime() - 60000);
 
     const formatTimestamp = (date: Date) => {
       const day = date.getDate().toString().padStart(2, '0');
-      const month = date.toLocaleString('en-US', { month: 'short' }); // Oct
+      const month = date.toLocaleString('en-US', { month: 'short' });
       const year = date.getFullYear();
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
       const seconds = date.getSeconds().toString().padStart(2, '0');
-      const milliseconds = date.getMilliseconds().toString().padEnd(3, '0'); // 227 for milliseconds
+      const milliseconds = date.getMilliseconds().toString().padEnd(3, '0');
     
       return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}.${milliseconds}`;
     };
-    
 
     const url = `${API_BASE_URL}/devices?deviceid=${deviceId}&start_time=${formatTimestamp(startTime)}&end_time=${formatTimestamp(endTime)}`;
 
@@ -94,16 +93,20 @@ export default function AdminPage() {
 
   const getStatusCounts = () => {
     const counts = {
-      Lancar: 0,
-      Sedang: 0,
-      Macet: 0,
+      'Lancar': 0,
+      'Ramai Lancar': 0,
+      'Padat': 0,
+      'Padat Merayap': 0,
+      'Macet': 0,
+      'Macet Total': 0,
+      'Tidak Aktif': 0,
       Total: devices.length
     };
 
     devices.forEach(device => {
-      if (device.status === 'Lancar') counts.Lancar++;
-      else if (device.status === 'Sedang') counts.Sedang++;
-      else if (device.status === 'Macet') counts.Macet++;
+      if (counts.hasOwnProperty(device.status)) {
+        counts[device.status as keyof typeof counts]++;
+      }
     });
 
     return counts;
@@ -111,8 +114,27 @@ export default function AdminPage() {
 
   const statusCounts = getStatusCounts();
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Lancar':
+        return <Activity className="h-8 w-8 text-green-500" />;
+      case 'Ramai Lancar':
+        return <Car className="h-8 w-8 text-blue-500" />;
+      case 'Padat':
+        return <BarChart3 className="h-8 w-8 text-yellow-500" />;
+      case 'Padat Merayap':
+        return <AlertTriangle className="h-8 w-8 text-orange-500" />;
+      case 'Macet':
+        return <AlertCircle className="h-8 w-8 text-red-500" />;
+      case 'Macet Total':
+        return <AlertCircle className="h-8 w-8 text-red-700" />;
+      default:
+        return <Activity className="h-8 w-8 text-gray-500" />;
+    }
+  };
+
   return (
-<div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       <Header />
 
       <main className="container mx-auto py-8 px-4">
@@ -124,10 +146,49 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard title="Lancar" value={statusCounts.Lancar} icon={<Activity className="h-8 w-8 text-green-500" />} />
-            <StatsCard title="Sedang" value={statusCounts.Sedang} icon={<BarChart3 className="h-8 w-8 text-yellow-500" />} />
-            <StatsCard title="Macet" value={statusCounts.Macet} icon={<Activity className="h-8 w-8 text-red-500" />} />
-            <StatsCard title="Total Devices" value={statusCounts.Total} icon={<Users className="h-8 w-8 text-blue-500" />} />
+            <StatsCard 
+              title="Lancar" 
+              value={statusCounts.Lancar} 
+              icon={getStatusIcon('Lancar')} 
+            />
+            <StatsCard 
+              title="Ramai Lancar" 
+              value={statusCounts['Ramai Lancar']} 
+              icon={getStatusIcon('Ramai Lancar')} 
+            />
+            <StatsCard 
+              title="Padat" 
+              value={statusCounts.Padat} 
+              icon={getStatusIcon('Padat')} 
+            />
+            <StatsCard 
+              title="Padat Merayap" 
+              value={statusCounts['Padat Merayap']} 
+              icon={getStatusIcon('Padat Merayap')} 
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatsCard 
+              title="Macet" 
+              value={statusCounts.Macet} 
+              icon={getStatusIcon('Macet')} 
+            />
+            <StatsCard 
+              title="Macet Total" 
+              value={statusCounts['Macet Total']} 
+              icon={getStatusIcon('Macet Total')} 
+            />
+            <StatsCard 
+              title="Tidak Aktif" 
+              value={statusCounts['Tidak Aktif']} 
+              icon={<Users className="h-8 w-8 text-gray-500" />} 
+            />
+            <StatsCard 
+              title="Total Devices" 
+              value={statusCounts.Total} 
+              icon={<Users className="h-8 w-8 text-blue-500" />} 
+            />
           </div>
 
           <Tabs defaultValue="map" className="mb-8">
