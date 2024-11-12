@@ -1,17 +1,64 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Device } from '../types';
 import Map from '../components/Map';
+import AlertNotification from '../components/AlertNotification';
 import dotenv from 'dotenv';
 
+interface StatusAlert {
+  deviceId: string;
+  location: string;
+  oldStatus: string;
+  newStatus: string;
+  timestamp: Date;
+}
+
 dotenv.config();
+
 export default function Home() {
-    const [devices, setDevices] = useState<Device[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [alerts, setAlerts] = useState<StatusAlert[]>([]);
+  const previousDevices = useRef<{ [key: string]: Device }>({});
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 60000); // Refresh every minute
+    const interval = setInterval(fetchDevices, 30000); // Update setiap 30 detik untuk testing
     return () => clearInterval(interval);
   }, []);
+
+  // Memantau perubahan devices dan membuat alert
+  useEffect(() => {
+    console.log('Devices updated:', devices); // Debug log
+
+    const newAlerts: StatusAlert[] = [];
+    devices.forEach(currentDevice => {
+      const prevDevice = previousDevices.current[currentDevice.deviceid];
+      
+      console.log('Checking device:', currentDevice.deviceid); // Debug log
+      console.log('Previous status:', prevDevice?.status); // Debug log
+      console.log('Current status:', currentDevice.status); // Debug log
+
+      if (prevDevice && prevDevice.status !== currentDevice.status) {
+        console.log('Status change detected!'); // Debug log
+        newAlerts.push({
+          deviceId: currentDevice.deviceid,
+          location: currentDevice.location,
+          oldStatus: prevDevice.status,
+          newStatus: currentDevice.status,
+          timestamp: new Date()
+        });
+      }
+
+      // Update previous devices
+      previousDevices.current[currentDevice.deviceid] = {...currentDevice};
+    });
+
+    if (newAlerts.length > 0) {
+      console.log('New alerts:', newAlerts); // Debug log
+      setAlerts(prev => [...newAlerts, ...prev].slice(0, 5)); // Batasi maksimal 5 alert
+    }
+
+    console.log('Current alerts:', alerts); // Debug log
+  }, [devices]);
 
   const fetchDevices = async () => {
     try {
@@ -21,7 +68,9 @@ export default function Home() {
       if (response.ok) {
         const deviceIds = result.data.map((device: Device) => device.deviceid);
         const detailedDevices = await Promise.all(deviceIds.map(fetchDeviceDetails));
-        setDevices(detailedDevices.filter((device): device is Device => device !== null));
+        const validDevices = detailedDevices.filter((device): device is Device => device !== null);
+        console.log('Fetched devices:', validDevices); // Debug log
+        setDevices(validDevices);
       } else {
         console.error(result.message || 'Failed to fetch devices');
       }
@@ -32,7 +81,7 @@ export default function Home() {
 
   const fetchDeviceDetails = async (deviceId: string): Promise<Device | null> => {
     const endTime = new Date();
-    const startTime = new Date(endTime.getTime() - 60000); // 1 minute ago
+    const startTime = new Date(endTime.getTime() - 60000);
 
     const formatTimestamp = (date: Date) => {
       const day = date.getDate().toString().padStart(2, '0');
@@ -64,26 +113,23 @@ export default function Home() {
     }
   };
 
-  const getStatusCounts = () => {
-    const counts = {
-      Lancar: 0,
-      Sedang: 0,
-      Macet: 0,
-      Total: devices.length
-    };
-
-    devices.forEach(device => {
-      if (device.status === 'Lancar') counts.Lancar++;
-      else if (device.status === 'Sedang') counts.Sedang++;
-      else if (device.status === 'Macet') counts.Macet++;
-    });
-
-    return counts;
+  const handleDismissAlert = (deviceId: string) => {
+    setAlerts(prev => prev.filter(alert => alert.deviceId !== deviceId));
   };
 
-  const statusCounts = getStatusCounts();
+  // Test function untuk memicu alert (untuk debugging)
+  const triggerTestAlert = () => {
+    const testAlert: StatusAlert = {
+      deviceId: 'test-device',
+      location: 'Test Location',
+      oldStatus: 'Lancar',
+      newStatus: 'Macet',
+      timestamp: new Date()
+    };
+    setAlerts(prev => [...prev, testAlert]);
+  };
 
-    return (
+  return (
     <main className="flex-grow">
       <div className="relative h-[calc(100vh-4rem)]">
         <Map data={devices} />
@@ -92,7 +138,19 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-300">
             Monitor traffic conditions across the city with our advanced monitoring system.
           </p>
+          {/* Tombol test untuk debugging */}
+          <button 
+            onClick={triggerTestAlert}
+            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Test Alert
+          </button>
         </div>
+        {/* Tambahkan debug info */}
+        <div className="absolute bottom-4 right-4 bg-white p-2 rounded shadow text-sm">
+          Devices: {devices.length} | Alerts: {alerts.length}
+        </div>
+        <AlertNotification alerts={alerts} onDismiss={handleDismissAlert} />
       </div>
     </main>
   );
