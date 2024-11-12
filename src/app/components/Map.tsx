@@ -18,17 +18,23 @@ const Map: React.FC<MapProps> = ({ data }) => {
   const isInitializedRef = useRef(false);
 
   const getStatusColor = (status: string): string => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return '#10B981'; // green
-      case 'inactive':
-        return '#EF4444'; // red
-      case 'maintenance':
-        return '#F59E0B'; // yellow
-      case 'offline':
-        return '#6B7280'; // gray
+    switch (status?.toLowerCase()) {
+      case 'lancar':
+        return '#10B981'; // green-500
+      case 'ramai lancar':
+        return '#3B82F6'; // blue-500
+      case 'padat':
+        return '#EAB308'; // yellow-500
+      case 'padat merayap':
+        return '#F97316'; // orange-500
+      case 'macet':
+        return '#EF4444'; // red-500
+      case 'macet total':
+        return '#B91C1C'; // red-700
+      case 'tidak aktif':
+        return '#6B7280'; // gray-500
       default:
-        return '#3B82F6'; // blue (default)
+        return '#6B7280'; // gray-500 (default)
     }
   };
 
@@ -58,9 +64,9 @@ const Map: React.FC<MapProps> = ({ data }) => {
         lng: parseFloat(item.longitude),
       };
 
-      const statusColor = getStatusColor(item.status || 'unknown');
+      const statusColor = getStatusColor(item.status || 'tidak aktif');
       const rgbColor = hexToRgb(statusColor);
-      const rgbString = rgbColor ? `${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}` : '59, 130, 246';
+      const rgbString = rgbColor ? `${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}` : '107, 114, 128';
 
       const markerContent = document.createElement('div');
       markerContent.className = 'marker-container';
@@ -70,7 +76,7 @@ const Map: React.FC<MapProps> = ({ data }) => {
             <h3 class="marker-title">${item.location}</h3>
             <p class="marker-details">
               <strong>Device ID:</strong> ${item.deviceid}<br>
-              <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'N/A'}</span>
+              <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'Tidak Aktif'}</span>
             </p>
           </div>
           <div class="pulse-ring" style="--status-color: ${rgbString};"></div>
