@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { AddDeviceModal } from './AddDeviceModal';
 import { EditDeviceModal } from './EditDeviceModal';
@@ -18,11 +17,33 @@ interface DataTableProps {
   onDeleteDevice: (deviceId: string) => void;
 }
 
+
 const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice, onDeleteDevice }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const getStatusColor = (status: string): { bg: string; text: string } => {
+    switch (status?.toLowerCase()) {
+      case 'lancar':
+        return { bg: 'bg-green-100', text: 'text-green-800' }; // green-500
+      case 'ramai lancar':
+        return { bg: 'bg-blue-100', text: 'text-blue-800' }; // blue-500
+      case 'padat':
+        return { bg: 'bg-yellow-100', text: 'text-yellow-800' }; // yellow-500
+      case 'padat merayap':
+        return { bg: 'bg-orange-100', text: 'text-orange-800' }; // orange-500
+      case 'macet':
+        return { bg: 'bg-red-100', text: 'text-red-800' }; // red-500
+      case 'macet total':
+        return { bg: 'bg-red-200', text: 'text-red-900' }; // red-700
+      case 'tidak aktif':
+        return { bg: 'bg-gray-100', text: 'text-gray-800' }; // gray-500
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-800' }; // gray-500 (default)
+    }
+  };
 
   const handleAddNewClick = () => {
     setIsAddModalOpen(true);
@@ -110,6 +131,9 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
       try {
         const response = await fetch(`${API_BASE_URL}/locationinfo/${deviceId}`, {
           method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
 
         if (response.ok) {
@@ -127,7 +151,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
   };
 
   return (
-<div>
+    <div>
       <div className="flex justify-between items-center mb-4">
         <Input
           placeholder="Search devices..."
@@ -154,37 +178,36 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.map((item, index) => (
-              <motion.tr
-                key={item.deviceid}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{item.location}</TableCell>
-                <TableCell>{item.latitude}</TableCell>
-                <TableCell>{item.longitude}</TableCell>
-                <TableCell>{item.deviceid}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    item.status === 'Lancar' ? 'bg-green-100 text-green-800' :
-                    item.status === 'Sedang' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {item.status}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onDeleteDevice(item.deviceid)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </motion.tr>
-            ))}
+            {filteredData.map((item, index) => {
+              const statusStyle = getStatusColor(item.status || 'tidak aktif');
+              return (
+                <motion.tr
+                  key={item.deviceid}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{item.location}</TableCell>
+                  <TableCell>{item.latitude}</TableCell>
+                  <TableCell>{item.longitude}</TableCell>
+                  <TableCell>{item.deviceid}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusStyle.bg} ${statusStyle.text}`}>
+                      {item.status || 'Tidak Aktif'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteDevice(item.deviceid)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </motion.tr>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -192,14 +215,14 @@ const DataTable: React.FC<DataTableProps> = ({ data, onAddDevice, onUpdateDevice
       <AddDeviceModal
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
-        onSubmit={onAddDevice}
+        onSubmit={handleAddDevice}
       />
 
       {selectedDevice && (
         <EditDeviceModal
           isOpen={isEditModalOpen}
           onClose={handleCloseEditModal}
-          onSubmit={onUpdateDevice}
+          onSubmit={handleUpdateDevice}
           device={selectedDevice}
         />
       )}
