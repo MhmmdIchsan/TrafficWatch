@@ -9,9 +9,10 @@ interface MapProps {
     longitude: string;
     status?: string;
   }>;
+  selectedDevice?: string; // New prop to handle selected device
 }
 
-const Map: React.FC<MapProps> = ({ data }) => {
+const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -99,6 +100,13 @@ const Map: React.FC<MapProps> = ({ data }) => {
       });
 
       markersRef.current.push(marker);
+
+      // If this is the selected device, center the map and add a special highlight
+      if (item.deviceid === selectedDevice) {
+        map.panTo(position);
+        map.setZoom(16); // Zoom in slightly for better view
+        markerContent.classList.add('selected-marker');
+      }
     });
   };
 
@@ -137,12 +145,12 @@ const Map: React.FC<MapProps> = ({ data }) => {
     initializeMap();
   }, []); 
 
-  // Update markers when data changes
+  // Update markers when data or selectedDevice changes
   useEffect(() => {
     if (map && data.length > 0) {
       createMarkers(map);
     }
-  }, [map, data]);
+  }, [map, data, selectedDevice]);
 
   return (
     <div className="relative">
@@ -167,6 +175,11 @@ const Map: React.FC<MapProps> = ({ data }) => {
           transition: all 0.3s ease;
           position: relative;
           z-index: 2;
+        }
+        .marker-content.selected-marker {
+          transform: scale(1.2);
+          box-shadow: 0 0 20px rgba(0,0,0,0.3);
+          z-index: 10;
         }
         .pulse-ring {
           position: absolute;
