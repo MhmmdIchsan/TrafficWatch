@@ -10,4 +10,8 @@ const handler = NextAuth({
     ],
 });
 
-export {handler as GET, handler as POST};
+export const generateStaticParams = () => {
+    return [{ nextauth: [''] }];
+};
+
+export const { GET, POST } = handler;
