@@ -1,6 +1,8 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Map, MapPin, Navigation, Bluetooth } from 'lucide-react';
+import Peta from "../../assets/images/image-3.png";
+import { motion } from "framer-motion";
+import { Map, MapPin, Navigation, Bluetooth } from "lucide-react";
+import Image from "next/image";
+import React from "react";
 
 const Features: React.FC = () => {
   return (
@@ -36,7 +38,9 @@ const Features: React.FC = () => {
           transition={{ duration: 0.8 }}
         >
           <h2 className="text-4xl md:text-5xl font-bold">Fitur Utama</h2>
-          <p className="text-gray-400 mt-4">Fitur canggih untuk pengalaman mobilitas Anda</p>
+          <p className="text-gray-400 mt-4">
+            Fitur canggih untuk pengalaman mobilitas Anda
+          </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
@@ -46,9 +50,17 @@ const Features: React.FC = () => {
             transition={{ duration: 0.7 }}
           >
             <h3 className="text-lg font-medium mb-2">Peta Lalu Lintas</h3>
-            <p className="mb-4 text-gray-400">Visualisasikan kondisi lalu lintas secara real-time di Banda Aceh.</p>
-            <div className="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center">
-              <Map className="w-12 h-12 text-gray-400" />
+            <p className="mb-4 text-gray-400">
+              Visualisasikan kondisi lalu lintas secara real-time di Banda Aceh.
+            </p>
+            <div className="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center relative">
+              <Image
+                src={Peta} // Replace with the actual image source
+                alt="Peta Lalu Lintas"
+                fill
+                className="rounded-lg object-cover" // Use object-cover to maintain aspect ratio
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
             </div>
           </motion.div>
 
@@ -58,7 +70,10 @@ const Features: React.FC = () => {
             transition={{ duration: 0.7 }}
           >
             <h3 className="text-lg font-medium mb-2">Pemantauan Kepadatan</h3>
-            <p className="mb-4 text-gray-400">Deteksi dan analisis kepadatan lalu lintas menggunakan teknologi Bluetooth Low Energy.</p>
+            <p className="mb-4 text-gray-400">
+              Deteksi dan analisis kepadatan lalu lintas menggunakan teknologi
+              Bluetooth Low Energy.
+            </p>
             <div className="grid grid-cols-3 gap-4">
               {/* Status and color are static and manually input */}
               <motion.div
@@ -130,24 +145,28 @@ const Features: React.FC = () => {
             transition={{ duration: 0.8 }}
           >
             <h3 className="text-lg font-medium mb-2">Lokasi Pemantauan</h3>
-            <p className="mb-4 text-gray-400">Lihat lokasi-lokasi di mana lalu lintas dipantau.</p>
+            <p className="mb-4 text-gray-400">
+              Lihat lokasi-lokasi di mana lalu lintas dipantau.
+            </p>
             <div className="w-full h-64 bg-gray-700 rounded-lg flex items-center justify-center gap-8">
-              {['Jalan Sudirman', 'Simpang Empat', 'Simpang Lampaseh'].map((location, index) => (
-                <motion.div
-                  key={location}
-                  className="flex flex-col items-center space-y-2"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
-                >
-                  <MapPin className="w-8 h-8 text-blue-400" />
-                  <span>{location}</span>
-                  <div className="flex items-center space-x-2 text-gray-400">
-                    <Navigation className="w-5 h-5" />
-                    <span>{(1.2 + index * 2.2).toFixed(1)} km</span>
-                  </div>
-                </motion.div>
-              ))}
+              {["Jalan Sudirman", "Simpang Empat", "Simpang Lampaseh"].map(
+                (location, index) => (
+                  <motion.div
+                    key={location}
+                    className="flex flex-col items-center space-y-2"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.2 }}
+                  >
+                    <MapPin className="w-8 h-8 text-blue-400" />
+                    <span>{location}</span>
+                    <div className="flex items-center space-x-2 text-gray-400">
+                      <Navigation className="w-5 h-5" />
+                      <span>{(1.2 + index * 2.2).toFixed(1)} km</span>
+                    </div>
+                  </motion.div>
+                )
+              )}
             </div>
           </motion.div>
         </div>

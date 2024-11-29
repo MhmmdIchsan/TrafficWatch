@@ -13,9 +13,8 @@ const HeroSection: React.FC = () => {
         <Image
           src={HeroImage}
           alt="Peta Lalu Lintas Banda Aceh"
-          layout="fill"
-          objectFit="cover"
-          className="-z-10 brightness-[0.4]" // Darkened from 0.7 to 0.4
+          fill
+          className="object-cover -z-10 brightness-[0.4]" // Darkened from 0.7 to 0.4
         />
         {/* Added a semi-transparent dark overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
