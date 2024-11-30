@@ -23,8 +23,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
-import { useSession, getSession } from 'next-auth/react';
-
+import { useRouter } from 'next/navigation';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function AdminPage() {
@@ -35,7 +34,14 @@ export default function AdminPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.push('/login'); // Redirect to login if no token
+    }
+  }, []);
 
   const generateNotification = (device: Device): Notification | null => {
     const criticalStatuses = ["Macet", "Macet Total", "Padat Merayap"];
@@ -271,10 +277,6 @@ export default function AdminPage() {
         console.error("Error deleting device:", error);
       });
   };
-
-  if (status === 'unauthenticated') {
-    return <div>Access denied. Please login to continue.</div>;
-  }
 
   return (
     <div className="min-h-screen relative bg-gradient-to-bl from-gray-900 via-gray-800 to-gray-900 overflow-hidden">

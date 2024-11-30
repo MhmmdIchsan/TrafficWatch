@@ -1,6 +1,5 @@
 'use client';
 
-import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import { metadata } from "./metadata"; // Impor metadata dari file terpisah
 
@@ -19,7 +18,7 @@ export default function RootLayout({
         <meta name="author" content={metadata.author} />
       </head>
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        {children}
       </body>
     </html>
   );

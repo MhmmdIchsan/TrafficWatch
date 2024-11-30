@@ -157,9 +157,6 @@ const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
       <div className="h-[600px] rounded-xl" ref={mapRef}>
         Google Maps
       </div>
-      <div className="absolute bottom-4 left-4 text-white text-2xl font-bold">
-        {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-      </div>
       <style jsx global>{`
         .marker-container {
           cursor: pointer;

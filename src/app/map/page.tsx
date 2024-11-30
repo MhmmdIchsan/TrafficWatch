@@ -186,8 +186,8 @@ export default function MapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-2xl">Loading...</div>
+      <div className="min-h-screen bg-gray-800 flex items-center justify-center">
+        <div className="animate-pulse text-white text-2xl">Loading...</div>
       </div>
     );
   }
@@ -202,10 +202,10 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen relative bg-gray-800 overflow-hidden">
-      <div className="absolute inset-0 bg-gray-800 z-0">
-        <div className="absolute w-40 h-40 bg-blue-600/20 rounded-full animate-blob top-10 left-20 mix-blend-overlay"></div>
-        <div className="absolute w-52 h-52 bg-purple-600/20 rounded-full animate-blob animation-delay-2000 top-1/3 right-20 mix-blend-overlay"></div>
-        <div className="absolute w-48 h-48 bg-pink-600/20 rounded-full animate-blob animation-delay-4000 bottom-20 left-1/3 mix-blend-overlay"></div>
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute bottom-0 left-0 w-52 h-52 bg-blue-500/10 rounded-full blur-3xl animate-pulse opacity-50"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/4 w-52 h-52 bg-green-500/10 rounded-full blur-2xl animate-bounce"></div>
       </div>
 
       <div className="relative z-10">
