@@ -41,6 +41,8 @@ interface DataTableProps {
   onDeleteDevice: (deviceId: string) => void;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const DataTable: React.FC<DataTableProps> = ({ 
   data, 
   onAddDevice, 
@@ -78,11 +80,11 @@ const DataTable: React.FC<DataTableProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      'Lancar': 'bg-green-800/30 text-green-400 border-green-600/50',
+      'Lengang': 'bg-green-800/30 text-green-400 border-green-600/50',
       'Ramai Lancar': 'bg-blue-800/30 text-blue-400 border-blue-600/50',
-      'Padat': 'bg-yellow-800/30 text-yellow-400 border-yellow-600/50',
+      'Ramai Padat': 'bg-yellow-800/30 text-yellow-400 border-yellow-600/50',
       'Padat Merayap': 'bg-orange-800/30 text-orange-400 border-orange-600/50',
-      'Macet': 'bg-red-800/30 text-red-400 border-red-600/50',
+      'Padat Tersendat': 'bg-red-800/30 text-red-400 border-red-600/50',
       'Macet Total': 'bg-red-900/30 text-red-500 border-red-700/50',
       'Tidak Aktif': 'bg-gray-800/30 text-gray-400 border-gray-600/50'
     };
@@ -278,6 +280,7 @@ const DataTable: React.FC<DataTableProps> = ({
           onClose={handleCloseEditModal}
           onSubmit={onUpdateDevice}
           device={selectedDevice}
+          apiBaseUrl={`${API_BASE_URL}`}
         />
       )}
     </Card>

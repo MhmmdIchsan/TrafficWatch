@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function AdminPage() {
@@ -44,8 +45,8 @@ export default function AdminPage() {
   }, []);
 
   const generateNotification = (device: Device): Notification | null => {
-    const criticalStatuses = ["Macet", "Macet Total", "Padat Merayap"];
-    const warningStatuses = ["Padat", "Ramai Lancar"];
+    const criticalStatuses = ["Padat Tersendat", "Macet Total", "Padat Merayap"];
+    const warningStatuses = ["Ramai Padat", "Ramai Lancar"];
 
     if (criticalStatuses.includes(device.status)) {
       return {
@@ -68,73 +69,31 @@ export default function AdminPage() {
     return null;
   };
 
-  const fetchDeviceDetails = async (
-    deviceId: string
-  ): Promise<Device | null> => {
-    const endTime = new Date();
-    const startTime = new Date(endTime.getTime() - 60000);
-
-    const formatTimestamp = (date: Date) => {
-      const day = date.getDate().toString().padStart(2, "0");
-      const month = date.toLocaleString("en-US", { month: "short" });
-      const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, "0");
-      const minutes = date.getMinutes().toString().padStart(2, "0");
-      const seconds = date.getSeconds().toString().padStart(2, "0");
-      const milliseconds = date.getMilliseconds().toString().padStart(3, "0");
-
-      return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-    };
-
-    const url = `${API_BASE_URL}/devices?deviceid=${deviceId}&start_time=${formatTimestamp(
-      startTime
-    )}&end_time=${formatTimestamp(endTime)}`;
-
-    try {
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (response.ok) {
-        return result.data;
-      } else {
-        console.error(
-          result.message || `Failed to fetch details for device ${deviceId}`
-        );
-        return null;
-      }
-    } catch (error) {
-      console.error(`Error fetching details for device ${deviceId}:`, error);
-      return null;
-    }
-  };
-
   const fetchDevices = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch(`${API_BASE_URL}/locationinfo`);
       const result = await response.json();
-
+  
       if (response.ok) {
-        const deviceIds = result.data.map((device: Device) => device.deviceid);
-        const detailedDevices = await Promise.all(
-          deviceIds.map(fetchDeviceDetails)
-        );
-        const validDevices = detailedDevices.filter(
-          (device): device is Device => device !== null
-        );
-
+        // Langsung gunakan data dari result
+        const validDevices = result.data.map((device: Device) => ({
+          ...device,
+          status: device.status === 'null' ? 'Tidak Aktif' : device.status
+        }));
+  
         // Generate notifications based on device statuses
         const newNotifications = validDevices
           .map(generateNotification)
           .filter(
-            (notification): notification is Notification =>
+            (notification: Notification | null): notification is Notification =>
               notification !== null
           );
-
+          
         setDevices(validDevices);
         setFilteredDevices(validDevices);
-
+  
         // Update notifications, keeping only unique notifications
         setNotifications((prevNotifications) => {
           const uniqueNotifications = [
@@ -146,10 +105,10 @@ export default function AdminPage() {
                 index === self.findIndex((t) => t.id === notification.id)
             )
             .slice(0, 5); // Limit to 5 most recent notifications
-
+  
           return uniqueNotifications;
         });
-
+  
         setIsLoading(false);
       }
     } catch (error) {
@@ -161,7 +120,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchDevices();
-    const interval = setInterval(fetchDevices, 60000);
+    const interval = setInterval(fetchDevices, 180000);
     return () => clearInterval(interval);
   }, [fetchDevices]);
 
@@ -184,11 +143,11 @@ export default function AdminPage() {
 
   const getStatusCounts = () => {
     const counts = {
-      Lancar: 0,
+      Lengang: 0,
       "Ramai Lancar": 0,
-      Padat: 0,
+      "Ramai Padat" : 0,
       "Padat Merayap": 0,
-      Macet: 0,
+      "Padat Tersendat": 0,
       "Macet Total": 0,
       "Tidak Aktif": 0,
       Total: devices.length,
@@ -207,15 +166,15 @@ export default function AdminPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "Lancar":
+      case "Lengang":
         return <Activity className="text-green-500" size={24} />;
       case "Ramai Lancar":
         return <Car className="text-blue-500" size={24} />;
-      case "Padat":
+      case "Ramai Padat":
         return <BarChart3 className="text-yellow-500" size={24} />;
       case "Padat Merayap":
         return <AlertTriangle className="text-orange-500" size={24} />;
-      case "Macet":
+      case "Padat Tersendat":
         return <AlertCircle className="text-red-500" size={24} />;
       case "Macet Total":
         return <AlertCircle className="text-red-700" size={24} />;
@@ -258,8 +217,11 @@ export default function AdminPage() {
   };
 
   const handleDeleteDevice = (deviceId: string) => {
-    fetch(`${API_BASE_URL}/devices/${deviceId}`, {
+    fetch(`${API_BASE_URL}/locationinfo/${deviceId}`, {
       method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
     })
       .then((response) => {
         if (response.ok) {

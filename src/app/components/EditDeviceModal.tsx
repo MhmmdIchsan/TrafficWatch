@@ -8,28 +8,31 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import axios from 'axios'; // Make sure to install axios
 
 interface EditDeviceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (device: Device) => void;
   device: Device;
+  apiBaseUrl: string; // Add this to pass the base API URL
 }
 
 export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({ 
   isOpen, 
   onClose, 
   onSubmit, 
-  device 
+  device,
+  apiBaseUrl
 }) => {
   // Initialize form data with all device attributes
   const [formData, setFormData] = useState({
     deviceid: device.deviceid,
     location: device.location || '',
-    latitude: device.latitude || 0,
-    longitude: device.longitude || 0,
+    latitude: device.latitude || '',
+    longitude: device.longitude || '',
     is_detection_enabled: device.is_detection_enabled ?? true,
-    sampling_interval: device.sampling_interval || 1,
+    sampling_interval: device.sampling_interval || 5,
     status: device.status || '',
     last_update_time: device.last_update_time || ''
   });
@@ -45,10 +48,10 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
     setFormData({
       deviceid: device.deviceid,
       location: device.location || '',
-      latitude: device.latitude || 0,
-      longitude: device.longitude || 0,
+      latitude: device.latitude || '',
+      longitude: device.longitude || '',
       is_detection_enabled: device.is_detection_enabled ?? true,
-      sampling_interval: device.sampling_interval || 1,
+      sampling_interval: device.sampling_interval || 5,
       status: device.status || '',
       last_update_time: device.last_update_time || ''
     });
@@ -121,42 +124,76 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'sampling_interval' ? parseInt(value) :
-              name === 'latitude' || name === 'longitude' ? parseFloat(value) : value
+      [name]: name === 'sampling_interval' ? parseInt(value) : value
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
+    setError(null);
     
     try {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        // Send configuration update via WebSocket
-        const message = {
-          action: "sendConfig",
-          deviceid: formData.deviceid,
-          updates: {
-            is_detection_enabled: formData.is_detection_enabled,
-            sampling_interval: formData.sampling_interval
-          }
-        };
-        
-        wsRef.current.send(JSON.stringify(message));
-        
-        // Call onSubmit to update parent component
-        await onSubmit({
-          ...device,
-          is_detection_enabled: formData.is_detection_enabled,
-          sampling_interval: formData.sampling_interval
-        });
-        
-        onClose();
-      } else {
-        throw new Error('WebSocket connection is not open');
-      }
+      // 1. Update location info via PUT request
+      const locationUpdatePromise = axios.put(`${apiBaseUrl}/locationinfo/${formData.deviceid}`, {
+        location: formData.location,
+        latitude: formData.latitude,
+        longitude: formData.longitude
+      });
+  
+      // 2. Update WebSocket-based config (is_detection_enabled and sampling_interval)
+      const websocketUpdatePromise = new Promise((resolve, reject) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          const message = {
+            action: "sendConfig",
+            deviceid: formData.deviceid,
+            updates: {
+              is_detection_enabled: formData.is_detection_enabled,
+              sampling_interval: formData.sampling_interval
+            }
+          };
+          
+          const timeout = setTimeout(() => {
+            // Resolve instead of reject if data already updated
+            resolve(null);
+          }, 5000);
+  
+          wsRef.current.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'config_update' && data.deviceid === formData.deviceid) {
+                clearTimeout(timeout);
+                resolve(data);
+              }
+            } catch (e) {
+              clearTimeout(timeout);
+              resolve(null);
+            }
+          };
+  
+          wsRef.current.send(JSON.stringify(message));
+        } else {
+          // If WebSocket not open, still proceed
+          resolve(null);
+        }
+      });
+  
+      // Wait for both updates to complete
+      await Promise.all([locationUpdatePromise, websocketUpdatePromise]);
+  
+      // Call onSubmit to update parent component with the full updated device
+      await onSubmit({
+        ...device,
+        location: formData.location,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        is_detection_enabled: formData.is_detection_enabled,
+        sampling_interval: formData.sampling_interval
+      });
+  
+      onClose();
     } catch (error) {
-      setError('Failed to update device configuration');
+      setError(error instanceof Error ? error.message : 'Failed to update device configuration');
     } finally {
       setIsSaving(false);
     }
@@ -222,8 +259,6 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
               <Input
                 id="latitude"
                 name="latitude"
-                type="number"
-                step="any"
                 value={formData.latitude}
                 onChange={handleInputChange}
                 className="col-span-3"
@@ -238,8 +273,6 @@ export const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
               <Input
                 id="longitude"
                 name="longitude"
-                type="number"
-                step="any"
                 value={formData.longitude}
                 onChange={handleInputChange}
                 className="col-span-3"

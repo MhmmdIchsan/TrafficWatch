@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 
 interface MapProps {
   data: Array<{
@@ -8,79 +11,65 @@ interface MapProps {
     latitude: string;
     longitude: string;
     status?: string;
+    updated_at?: string;
   }>;
-  selectedDevice?: string; // New prop to handle selected device
+  selectedDevice?: string;
 }
 
 const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const isInitializedRef = useRef(false);
+  const markersRef = useRef<{
+    marker: google.maps.marker.AdvancedMarkerElement, 
+    labelOverlay: google.maps.marker.AdvancedMarkerElement
+  }[]>([]);
+  const [isMapInitialized, setIsMapInitialized] = useState(false);
+  const [selectedMarkerInfo, setSelectedMarkerInfo] = useState<{
+    deviceid: string;
+    location: string;
+    status: string;
+    updated_at?: string;
+    originalZoom?: number;
+    originalCenter?: google.maps.LatLng;
+  } | null>(null);
 
-  const getStatusColor = (status: string): string => {
+  const getStatusColor = (status: string): { pinColor: string, textColor: string, badgeVariant: string } => {
     switch (status?.toLowerCase()) {
-      case 'lancar':
-        return '#10B981'; // green-500
-      case 'ramai lancar':
-        return '#3B82F6'; // blue-500
-      case 'padat':
-        return '#EAB308'; // yellow-500
-      case 'padat merayap':
-        return '#F97316'; // orange-500
-      case 'macet':
-        return '#EF4444'; // red-500
-      case 'macet total':
-        return '#B91C1C'; // red-700
-      case 'tidak aktif':
-        return '#6B7280'; // gray-500
-      default:
-        return '#6B7280'; // gray-500 (default)
+      case 'lengang': return { pinColor: '#10B981', textColor: '#10B981', badgeVariant: 'success' };
+      case 'ramai lancar': return { pinColor: '#3B82F6', textColor: '#3B82F6', badgeVariant: 'info' };
+      case 'ramai padat': return { pinColor: '#EAB308', textColor: '#EAB308', badgeVariant: 'warning' };
+      case 'padat merayap': return { pinColor: '#F97316', textColor: '#F97316', badgeVariant: 'destructive' };
+      case 'padat tersendat': return { pinColor: '#EF4444', textColor: '#EF4444', badgeVariant: 'destructive' };
+      case 'macet total': return { pinColor: '#B91C1C', textColor: '#B91C1C', badgeVariant: 'destructive' };
+      case 'tidak aktif': return { pinColor: '#6B7280', textColor: '#ffffff', badgeVariant: 'secondary' };
+      default: return { pinColor: '#6B7280', textColor: '#000000', badgeVariant: 'secondary' };
     }
-  };
-
-  // Function to convert hex to RGB
-  const hexToRgb = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
   };
 
   const createMarkers = (map: google.maps.Map) => {
-    if (!data.length) return;
+    // Hapus marker lama
+    markersRef.current.forEach(({ marker, labelOverlay }) => {
+      if (marker) marker.map = null;
+      if (labelOverlay) labelOverlay.map = null;
+    });
+    markersRef.current = [];
 
-    // Clear existing markers only if they exist
-    if (markersRef.current.length > 0) {
-      markersRef.current.forEach((marker) => marker.map = null);
-      markersRef.current = [];
-    }
-
-    // Add new markers
-    data.forEach(async (item) => {
+    data.forEach((item) => {
       const position = {
-        lat: parseFloat(item.latitude),
+        lat: parseFloat(item.latitude), 
         lng: parseFloat(item.longitude),
       };
 
-      const statusColor = getStatusColor(item.status || 'tidak aktif');
-      const rgbColor = hexToRgb(statusColor);
-      const rgbString = rgbColor ? `${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}` : '107, 114, 128';
+      const { pinColor, textColor } = getStatusColor(item.status || 'tidak aktif');
 
-      const markerContent = document.createElement('div');
-      markerContent.className = 'marker-container';
-      markerContent.innerHTML = `
-        <div class="marker-content" style="border-color: ${statusColor}; --status-color: ${rgbString};">
-          <div class="marker-inner">
-            <h3 class="marker-title">${item.location}</h3>
-            <p class="marker-details">
-              <strong>Device ID:</strong> ${item.deviceid}<br>
-              <strong>Status:</strong> <span style="color: ${statusColor};">${item.status || 'Tidak Aktif'}</span>
-            </p>
-          </div>
-          <div class="pulse-ring" style="--status-color: ${rgbString};"></div>
+      // Buat marker pin
+      const pinContent = document.createElement('div');
+      pinContent.innerHTML = `
+        <div class="map-pin" style="background-color: ${pinColor};">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="signal-icon">
+            <path d="M12 11V5M12 5L8 9M12 5L16 9" />
+            <path d="M16 17L12 13L8 17" />
+          </svg>
         </div>
       `;
 
@@ -90,29 +79,90 @@ const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
         libraries: ['marker'],
       });
 
-      const { AdvancedMarkerElement } = await loader.importLibrary('marker');
-      
-      const marker = new AdvancedMarkerElement({
-        map,
-        position,
-        content: markerContent,
-        title: item.location,
+      loader.importLibrary('marker').then(({ AdvancedMarkerElement }) => {
+        const marker = new AdvancedMarkerElement({
+          map,
+          position,
+          content: pinContent,
+          title: item.location,
+        });
+
+        // Tambahkan event listener untuk click
+        marker.addListener('click', () => {
+          // Simpan zoom dan center sebelumnya
+          const originalZoom = map.getZoom();
+          const originalCenter = map.getCenter();
+
+          // Zoom dan center ke marker
+          map.panTo(position);
+          map.setZoom(16);
+          
+          // Set informasi marker yang dipilih
+          setSelectedMarkerInfo({
+            deviceid: item.deviceid,
+            location: item.location,
+            status: item.status || 'Tidak Aktif',
+            updated_at: item.updated_at,
+            originalZoom,
+            originalCenter
+          });
+        });
+
+        // Buat label terpisah
+        const labelContent = document.createElement('div');
+        labelContent.className = 'marker-label';
+        labelContent.innerHTML = `
+          <div class="label-details" style="color: ${textColor};">
+            <div class="location-name">${item.location}</div>
+            <div class="status-text">${item.status || 'Tidak Aktif'}</div>
+          </div>
+        `;
+
+        const labelOverlay = new AdvancedMarkerElement({
+          map,
+          position,
+          content: labelContent,
+          zIndex: 1000, // Pastikan label di atas marker
+        });
+
+        // Simpan marker dan label
+        markersRef.current.push({ marker, labelOverlay });
+
+        // Logika zoom untuk visibilitas label
+        const updateLabelVisibility = () => {
+          const currentZoom = map.getZoom();
+          const labelDetails = labelContent.querySelector('.label-details') as HTMLElement;
+          
+          if (currentZoom !== undefined) {
+            if (currentZoom > 15) {
+              labelDetails.style.display = 'block';
+              labelDetails.style.fontSize = '10px';
+            } else if (currentZoom > 12) {
+              labelDetails.style.display = 'block';
+              labelDetails.style.fontSize = '8px';
+            } else {
+              labelDetails.style.display = 'none';
+            }
+          }
+        };
+
+        map.addListener('zoom_changed', updateLabelVisibility);
+        updateLabelVisibility();
+
+        // Highlight perangkat yang dipilih
+        if (item.deviceid === selectedDevice) {
+          map.panTo(position);
+          map.setZoom(16);
+          pinContent.classList.add('selected-marker');
+        }
       });
-
-      markersRef.current.push(marker);
-
-      // If this is the selected device, center the map and add a special highlight
-      if (item.deviceid === selectedDevice) {
-        map.panTo(position);
-        map.setZoom(16); // Zoom in slightly for better view
-        markerContent.classList.add('selected-marker');
-      }
     });
   };
 
+  // Inisialisasi peta (kode sebelumnya tetap sama)
   useEffect(() => {
     const initializeMap = async () => {
-      if (isInitializedRef.current) return;
+      if (isMapInitialized) return;
 
       const loader = new Loader({
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
@@ -123,8 +173,8 @@ const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
       const { Map } = await loader.importLibrary('maps');
 
       const centerLocation = {
-        lat: 5.54928724461252,
-        lng: 95.32472272422619,
+        lat: 5.5675686454818285, 
+        lng: 95.34096618180048,
       };
 
       const options: google.maps.MapOptions = {
@@ -132,89 +182,145 @@ const Map: React.FC<MapProps> = ({ data, selectedDevice }) => {
         zoom: 14,
         mapId: 'NEXT_MAPS_TUTS',
         draggable: true,
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }]
+          },
+          {
+            featureType: 'transit',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }]
+          }
+        ]
       };
 
       const newMap = new Map(mapRef.current as HTMLDivElement, options);
       setMap(newMap);
       
-      // Create markers immediately after map initialization
       createMarkers(newMap);
-      isInitializedRef.current = true;
+      setIsMapInitialized(true);
+
+      // Tambahkan event listener untuk menutup popup saat mengklik di luar marker
+      newMap.addListener('click', () => {
+        setSelectedMarkerInfo(null);
+      });
     };
 
     initializeMap();
-  }, []); 
+  }, [isMapInitialized]); 
 
-  // Update markers when data or selectedDevice changes
+  // Recreate markers when data or selected device changes
   useEffect(() => {
     if (map && data.length > 0) {
       createMarkers(map);
     }
   }, [map, data, selectedDevice]);
 
+  // Fungsi untuk menutup card dan reset view
+  const handleCloseMarkerInfo = () => {
+    if (map && selectedMarkerInfo) {
+      // Kembalikan zoom dan center ke pengaturan sebelumnya
+      if (selectedMarkerInfo.originalZoom !== undefined) {
+        map.setZoom(selectedMarkerInfo.originalZoom);
+      }
+      if (selectedMarkerInfo.originalCenter) {
+        map.setCenter(selectedMarkerInfo.originalCenter);
+      }
+      
+      // Hapus informasi marker yang dipilih
+      setSelectedMarkerInfo(null);
+    }
+  };
+
   return (
     <div className="relative">
       <div className="h-[600px] rounded-xl" ref={mapRef}>
         Google Maps
       </div>
+      
+      {/* Popup Card untuk Detail Marker */}
+      {selectedMarkerInfo && (
+        <div className="absolute top-4 right-4 z-50">
+          <Card className="w-72 bg-white/90 backdrop-blur-lg shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xl">{selectedMarkerInfo.location}</CardTitle>
+              <button 
+                onClick={handleCloseMarkerInfo}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Device ID:</span>
+                  <span className="font-semibold">{selectedMarkerInfo.deviceid}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Status:</span>
+                  <Badge 
+                    variant={getStatusColor(selectedMarkerInfo.status).badgeVariant as any}
+                  >
+                    {selectedMarkerInfo.status}
+                  </Badge>
+                </div>
+                {selectedMarkerInfo.updated_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Last Updated:</span>
+                    <span className="text-sm">
+                      {new Date(selectedMarkerInfo.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      
       <style jsx global>{`
-        .marker-container {
+        .map-pin {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
           cursor: pointer;
-          position: relative;
+          transition: transform 0.2s;
         }
-        .marker-content {
-          background-color: white;
-          border-radius: 16px;
-          box-shadow: 0 2px 6px rgba(0,0,0,.3);
-          padding: 12px;
-          font-family: Arial, sans-serif;
-          border: 2px solid;
-          transition: all 0.3s ease;
-          position: relative;
-          z-index: 2;
+        .map-pin:hover {
+          transform: scale(1.1);
         }
-        .marker-content.selected-marker {
-          transform: scale(1.2);
-          box-shadow: 0 0 20px rgba(0,0,0,0.3);
-          z-index: 10;
+        .signal-icon {
+          width: 14px;
+          height: 14px;
         }
-        .pulse-ring {
+        .marker-label {
           position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 100%;
-          height: 100%;
-          border-radius: 16px;
-          animation: pulse 2s infinite;
-          z-index: 1;
+          pointer-events: none;
+          display: flex;
+          align-items: center;
         }
-        .marker-content:hover {
-          transform: scale(1.05);
+        .label-details {
+          font-weight: bold;
+          white-space: nowrap;
+          margin-left: 10px;
         }
-        .marker-title {
-          font-size: 16px;
-          margin: 0 0 8px;
-          color: #333;
+        .location-name {
+          font-size: 12px;
+          line-height: 1.2;
         }
-        .marker-details {
-          font-size: 14px;
-          margin: 0;
-          color: #666;
+        .status-text {
+          font-size: 10px;
+          line-height: 1.2;
         }
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(var(--status-color), 0.7);
-            opacity: 1;
-          }
-          70% {
-            box-shadow: 0 0 0 20px rgba(var(--status-color), 0);
-            opacity: 0.5;
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(var(--status-color), 0);
-            opacity: 0;
-          }
+        .selected-marker {
+          transform: scale(1.1);
         }
       `}</style>
     </div>
